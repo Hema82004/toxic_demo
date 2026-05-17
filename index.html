@@ -456,15 +456,15 @@
     <!-- STATS SECTION -->
     <div class="stats">
       <div class="stat-card">
-        <div class="stat-value" id="totalCount">127</div>
+        <div class="stat-value" id="totalCount">0</div>
         <div class="stat-label">Total Comments</div>
       </div>
       <div class="stat-card">
-        <div class="stat-value" id="flaggedCount">14</div>
+        <div class="stat-value" id="flaggedCount">0</div>
         <div class="stat-label">Flagged</div>
       </div>
       <div class="stat-card">
-        <div class="stat-value" id="accuracyCount">92%</div>
+        <div class="stat-value" id="accuracyCount">0%</div>
         <div class="stat-label">Accuracy</div>
       </div>
     </div>
@@ -480,7 +480,7 @@
       </div>
       <div class="form-group">
         <label for="commentInput">Your Comment</label>
-        <textarea id="commentInput" placeholder="Share your thoughts on AI moderation..."></textarea>
+        <textarea id="commentInput" placeholder="Share your thoughts on iPhone vs Samsung..."></textarea>
       </div>
       <div style="display: flex; gap: 10px;">
         <button class="submit-btn" onclick="submitComment()">Post Comment</button>
@@ -497,59 +497,35 @@
 
   <script>
     // ============ TOXIC WORDS LIST ============
-    // Real systems use ML models, but this list covers common toxic words
     const toxicWords = [
-      // Profanity
       "fuck", "shit", "ass", "bitch", "damn", "hell", "crap", "piss",
       "bastard", "cunt", "dick", "pussy", "twat", "wanker",
-      
-      // Insults
       "idiot", "stupid", "dumb", "moron", "retard", "loser", "pathetic",
       "worthless", "useless", "trash", "scum", "rat", "snake", "parasite",
-      
-      // Hate speech patterns
       "hate", "despise", "disgusting", "filthy", "repulsive", "vile",
       "hothead", "asshole", "jerk", "jackass", "prick",
-      
-      // Slang variations (common misspellings)
       "shitty", "shitt", "fck", "f**k", "sh1t", "bullshit", "horseshit",
       "motherfucker", "fucker", "bitches", "asses", "mofo",
-      
-      // Harassment/Insults
-      "kill yourself", "kys", "suicide", "worthless", "talentless",
-      "ugly", "fat", "skinny", "loser", "failure", "hopeless",
-      
-      // Slurs (common ones - add more based on your research)
-      "gay" // context-dependent, but often used as insult
+      "kill yourself", "kys", "suicide", "talentless",
+      "ugly", "fat", "skinny", "failure", "hopeless"
     ];
-    
-    // Note: This is still limited. Real systems use:
-    // - Machine Learning models trained on millions of examples
-    // - Word embeddings (understanding meaning, not just keywords)
-    // - Contextual analysis (understanding sentence context)
-    // - Semantic similarity (catching variations automatically)
-    // See explanation below in comments
 
-    // ============ SAMPLE COMMENTS ============
-    // This is pre-loaded to show how the system works
-    const sampleComments = [
+    // ============ DEFAULT SAMPLE COMMENTS ============
+    const DEFAULT_COMMENTS = [
       {
         name: "Priya M.",
-        avatar: "PM",
         time: "3 hours ago",
         text: "Great comparison! I was torn between iPhone 16 and Galaxy S25, this helped me understand the differences. Thanks for the honest review.",
         isToxic: false
       },
       {
         name: "Rahul Sharma",
-        avatar: "RS",
         time: "2 hours ago",
         text: "iPhone is overpriced garbage. Samsung S25 Ultra is clearly better in every way. This article is biased towards Apple.",
         isToxic: false
       },
       {
         name: "TechAnny",
-        avatar: "TA",
         time: "1 hour ago",
         text: "This article is shit and full of lies! iPhone users are idiots who get scammed by Apple. Samsung is the only choice for smart people.",
         isToxic: true,
@@ -557,14 +533,12 @@
       },
       {
         name: "Apple Lover",
-        avatar: "AL",
         time: "45 min ago",
         text: "The ecosystem integration you get with iPhone is unmatched. Worth every rupee. Samsung can't compete in smoothness and security.",
         isToxic: false
       },
       {
         name: "Angry Troll",
-        avatar: "AT",
         time: "30 min ago",
         text: "This review sucks and you're a stupid moron who doesn't know shit about phones. iPhone users are all idiots and assholes who deserve to burn.",
         isToxic: true,
@@ -572,19 +546,51 @@
       },
       {
         name: "Budget Conscious",
-        avatar: "BC",
         time: "20 min ago",
         text: "Samsung offers much better value. With the discounts they're offering, the Galaxy S25 is a steal compared to iPhone pricing.",
         isToxic: false
       },
       {
         name: "Helpful User",
-        avatar: "HU",
         time: "10 min ago",
         text: "Good breakdown! One thing to note - the camera comparison could have included more about video stabilization. Still, helpful article overall!",
         isToxic: false
       }
     ];
+
+    // ============ LIVE COMMENTS ARRAY ============
+    // FIX: This is the single source of truth — always load from localStorage first
+    let comments = [];
+
+    // ============ STORAGE KEY ============
+    const STORAGE_KEY = 'blogComments_v2';
+
+    // ============ LOAD FROM LOCAL STORAGE ============
+    function loadComments() {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+          comments = JSON.parse(saved);
+        } else {
+          // First visit — use defaults and save them
+          comments = JSON.parse(JSON.stringify(DEFAULT_COMMENTS));
+          saveComments();
+        }
+      } catch (e) {
+        console.error('Failed to load comments:', e);
+        comments = JSON.parse(JSON.stringify(DEFAULT_COMMENTS));
+      }
+    }
+
+    // ============ SAVE TO LOCAL STORAGE ============
+    // FIX: Always saves the live `comments` array (not a stale copy)
+    function saveComments() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(comments));
+      } catch (e) {
+        console.error('Failed to save comments:', e);
+      }
+    }
 
     // ============ HELPER FUNCTIONS ============
     function getInitials(name) {
@@ -605,42 +611,29 @@
         'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
         'linear-gradient(135deg, #30cfd0 0%, #330867 100%)',
       ];
-      const code = initials.charCodeAt(0) + initials.charCodeAt(1);
+      const code = (initials.charCodeAt(0) || 0) + (initials.charCodeAt(1) || 0);
       return gradients[code % gradients.length];
-    }
-
-    // ============ LOAD/SAVE FROM LOCAL STORAGE ============
-    function loadCommentsFromStorage() {
-      const saved = localStorage.getItem('blogComments');
-      if (saved) {
-        try {
-          return JSON.parse(saved);
-        } catch (e) {
-          return sampleComments;
-        }
-      }
-      return sampleComments;
-    }
-
-    function saveCommentsToStorage() {
-      localStorage.setItem('blogComments', JSON.stringify(sampleComments));
     }
 
     // ============ RENDER COMMENTS ============
     function renderComments() {
       const container = document.getElementById('commentsList');
-      
-      container.innerHTML = sampleComments.map((comment, idx) => {
+      if (!comments.length) {
+        container.innerHTML = '<p style="color:#999; text-align:center; padding: 2rem;">No comments yet. Be the first!</p>';
+        return;
+      }
+
+      container.innerHTML = comments.map((comment) => {
         const initials = getInitials(comment.name);
         const gradient = getAvatarGradient(initials);
-        
+
         return `
           <div class="comment ${comment.isToxic ? 'flagged' : 'approved'}">
             <div class="comment-header">
               <div class="comment-author">
                 <div class="avatar" style="background: ${gradient};">${initials}</div>
                 <div class="author-info">
-                  <div class="author-name">${comment.name}</div>
+                  <div class="author-name">${escapeHtml(comment.name)}</div>
                   <div class="author-time">${comment.time}</div>
                 </div>
               </div>
@@ -649,12 +642,30 @@
               </span>
             </div>
             <div class="comment-text ${comment.isToxic ? 'flagged-text' : ''}">
-              ${comment.text}
+              ${escapeHtml(comment.text)}
             </div>
-            ${comment.isToxic ? `<div class="flag-reason">Reason: ${comment.reason}</div>` : ''}
+            ${comment.isToxic ? `<div class="flag-reason">Reason: ${escapeHtml(comment.reason)}</div>` : ''}
           </div>
         `;
       }).join('');
+    }
+
+    // ============ ESCAPE HTML (security fix) ============
+    function escapeHtml(str) {
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    // ============ UPDATE STATS ============
+    function updateStats() {
+      const total = comments.length;
+      const flagged = comments.filter(c => c.isToxic).length;
+      const accuracy = total > 0 ? Math.round(((total - flagged) / total) * 100) : 100;
+
+      document.getElementById('totalCount').textContent = total;
+      document.getElementById('flaggedCount').textContent = flagged;
+      document.getElementById('accuracyCount').textContent = accuracy + '%';
     }
 
     // ============ SUBMIT COMMENT ============
@@ -662,30 +673,27 @@
       const name = document.getElementById('nameInput').value.trim();
       const text = document.getElementById('commentInput').value.trim();
       const feedback = document.getElementById('feedback');
-      
-      // Validation
+
       if (!name || !text) {
         feedback.textContent = '❌ Please fill in all fields.';
         feedback.className = 'feedback show toxic';
         return;
       }
 
-      // Check for toxic language
       const isToxic = toxicWords.some(word => text.toLowerCase().includes(word));
-      
-      // Create new comment
+
       const newComment = {
         name: name,
-        avatar: getInitials(name),
         time: 'just now',
         text: text,
         isToxic: isToxic,
         reason: isToxic ? 'Automatic detection: Toxic language detected' : null
       };
-      
-      sampleComments.unshift(newComment);
-      saveCommentsToStorage(); // 💾 SAVE TO LOCAL STORAGE
-      
+
+      // FIX: Push to the live `comments` array, then save it
+      comments.unshift(newComment);
+      saveComments();
+
       if (isToxic) {
         feedback.innerHTML = '⚠️ Warning: Toxic language detected! Comment posted but FLAGGED for review.';
         feedback.className = 'feedback show toxic';
@@ -693,111 +701,40 @@
         feedback.innerHTML = '✓ Comment approved! Posted successfully.';
         feedback.className = 'feedback show clean';
       }
-      
-      // Clear form
+
       document.getElementById('nameInput').value = '';
       document.getElementById('commentInput').value = '';
-      
-      // Re-render and update stats
+
       renderComments();
       updateStats();
-      
-      // Hide feedback after 4 seconds
+
       setTimeout(() => {
         feedback.classList.remove('show');
       }, 4000);
     }
 
-    // ============ UPDATE STATS ============
-    function updateStats() {
-      const total = sampleComments.length;
-      const flagged = sampleComments.filter(c => c.isToxic).length;
-      const accuracy = Math.round(((total - flagged) / total) * 100);
-      
-      document.getElementById('totalCount').textContent = total;
-      document.getElementById('flaggedCount').textContent = flagged;
-      document.getElementById('accuracyCount').textContent = accuracy + '%';
-    }
-
     // ============ RESET COMMENTS ============
     function resetComments() {
       if (confirm('Are you sure? This will delete all saved comments and reload sample comments.')) {
-        localStorage.removeItem('blogComments');
-        sampleComments = [...JSON.parse(JSON.stringify([
-          {
-            name: "Priya M.",
-            avatar: "PM",
-            time: "3 hours ago",
-            text: "Great comparison! I was torn between iPhone 16 and Galaxy S25, this helped me understand the differences. Thanks for the honest review.",
-            isToxic: false
-          },
-          {
-            name: "Rahul Sharma",
-            avatar: "RS",
-            time: "2 hours ago",
-            text: "iPhone is overpriced garbage. Samsung S25 Ultra is clearly better in every way. This article is biased towards Apple.",
-            isToxic: false
-          },
-          {
-            name: "TechAnny",
-            avatar: "TA",
-            time: "1 hour ago",
-            text: "This article is shit and full of lies! iPhone users are idiots who get scammed by Apple. Samsung is the only choice for smart people.",
-            isToxic: true,
-            reason: "Profanity and personal attacks on users"
-          },
-          {
-            name: "Apple Lover",
-            avatar: "AL",
-            time: "45 min ago",
-            text: "The ecosystem integration you get with iPhone is unmatched. Worth every rupee. Samsung can't compete in smoothness and security.",
-            isToxic: false
-          },
-          {
-            name: "Angry Troll",
-            avatar: "AT",
-            time: "30 min ago",
-            text: "This review sucks and you're a stupid moron who doesn't know shit about phones. iPhone users are all idiots and assholes who deserve to burn.",
-            isToxic: true,
-            reason: "Multiple profanities, aggressive harassment"
-          },
-          {
-            name: "Budget Conscious",
-            avatar: "BC",
-            time: "20 min ago",
-            text: "Samsung offers much better value. With the discounts they're offering, the Galaxy S25 is a steal compared to iPhone pricing.",
-            isToxic: false
-          },
-          {
-            name: "Helpful User",
-            avatar: "HU",
-            time: "10 min ago",
-            text: "Good breakdown! One thing to note - the camera comparison could have included more about video stabilization. Still, helpful article overall!",
-            isToxic: false
-          }
-        ]))];
+        // FIX: Reset the live array and re-save
+        comments = JSON.parse(JSON.stringify(DEFAULT_COMMENTS));
+        saveComments();
         renderComments();
         updateStats();
-        alert('✅ Comments reset to default. All saved comments cleared.');
+        alert('✅ Comments reset to default.');
       }
     }
 
     // ============ INITIALIZE ============
+    // FIX: Load → render → stats, all in the right order on page load
+    loadComments();
     renderComments();
     updateStats();
 
-    // Allow Enter key to submit
     document.getElementById('commentInput').addEventListener('keydown', function(e) {
       if (e.key === 'Enter' && e.ctrlKey) {
         submitComment();
       }
-    });
-
-    // ============ LOAD COMMENTS ON PAGE LOAD ============
-    window.addEventListener('load', function() {
-      sampleComments = loadCommentsFromStorage();
-      renderComments();
-      updateStats();
     });
   </script>
 </body>
