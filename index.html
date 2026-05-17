@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Comment Moderation Demo</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+      background: #f5f7fa;
+      color: #1a1a1a;
+    }
+
+    .blog-container {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 2rem 1rem;
+    }
+
+    /* ============ ARTICLE HEADER ============ */
+    .article-header {
+      background: white;
+      padding: 2rem;
+      border-bottom: 1px solid #e0e0e0;
+      margin-bottom: 2rem;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+
+    .article-header h1 {
+      font-size: 28px;
+      font-weight: 600;
+      margin-bottom: 12px;
+      line-height: 1.3;
+      color: #1a1a1a;
+    }
+
+    .article-meta {
+      display: flex;
+      gap: 16px;
+      font-size: 14px;
+      color: #666;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+
+    .author {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 600;
+      font-size: 12px;
+    }
+
+    /* ============ ARTICLE CONTENT ============ */
+    .article-content {
+      background: white;
+      padding: 2rem;
+      margin-bottom: 2rem;
+      font-size: 16px;
+      line-height: 1.8;
+      color: #333;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+
+    .article-content p {
+      margin-bottom: 1.5rem;
+    }
+
+    .article-content strong {
+      font-weight: 600;
+      color: #1a1a1a;
+    }
+
+    /* ============ SECTION TITLE ============ */
+    .section-title {
+      font-size: 20px;
+      font-weight: 600;
+      margin-top: 2rem;
+      margin-bottom: 1.5rem;
+      color: #1a1a1a;
+      padding: 0 1rem;
+    }
+
+    /* ============ COMMENT FORM ============ */
+    .comment-form {
+      background: white;
+      padding: 1.5rem;
+      border-bottom: 1px solid #e0e0e0;
+      margin-bottom: 2rem;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+
+    .comment-form h3 {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 12px;
+      color: #1a1a1a;
+    }
+
+    .form-group {
+      margin-bottom: 12px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 14px;
+      color: #666;
+      margin-bottom: 8px;
+      font-weight: 500;
+    }
+
+    .form-group input,
+    .form-group textarea {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-family: inherit;
+      font-size: 14px;
+      transition: border-color 0.2s;
+    }
+
+    .form-group input:focus,
+    .form-group textarea:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .form-group textarea {
+      resize: vertical;
+      min-height: 100px;
+    }
+
+    .submit-btn {
+      background: #22c55e;
+      color: white;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 14px;
+      transition: background 0.2s;
+    }
+
+    .submit-btn:hover {
+      background: #16a34a;
+    }
+
+    .submit-btn:active {
+      transform: scale(0.98);
+    }
+
+    /* ============ FEEDBACK MESSAGE ============ */
+    .feedback {
+      margin-top: 12px;
+      padding: 10px 12px;
+      border-radius: 6px;
+      font-size: 14px;
+      display: none;
+      border-left: 4px solid;
+    }
+
+    .feedback.show {
+      display: block;
+      animation: slideIn 0.3s ease-out;
+    }
+
+    .feedback.clean {
+      background: #f0fdf4;
+      color: #166534;
+      border-left-color: #22c55e;
+    }
+
+    .feedback.toxic {
+      background: #fef2f2;
+      color: #991b1b;
+      border-left-color: #dc2626;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(-10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* ============ COMMENTS LIST ============ */
+    .comments-list {
+      padding: 0 1rem;
+    }
+
+    .comment {
+      background: white;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      padding: 1.25rem;
+      margin-bottom: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      transition: all 0.2s;
+    }
+
+    .comment.flagged {
+      border-left: 4px solid #dc2626;
+      background: #fef2f2;
+      opacity: 0.85;
+    }
+
+    .comment.approved {
+      border-left: 4px solid #22c55e;
+    }
+
+    .comment:hover {
+      box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+    }
+
+    /* ============ COMMENT HEADER ============ */
+    .comment-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .comment-author {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .comment-author .avatar {
+      width: 36px;
+      height: 36px;
+      font-size: 13px;
+    }
+
+    .author-info {
+      flex: 1;
+    }
+
+    .author-name {
+      font-weight: 600;
+      font-size: 15px;
+      color: #1a1a1a;
+    }
+
+    .author-time {
+      font-size: 13px;
+      color: #999;
+    }
+
+    /* ============ COMMENT STATUS BADGE ============ */
+    .comment-status {
+      font-size: 12px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 6px;
+      white-space: nowrap;
+    }
+
+    .status-approved {
+      background: #f0fdf4;
+      color: #166534;
+    }
+
+    .status-flagged {
+      background: #fef2f2;
+      color: #991b1b;
+    }
+
+    /* ============ COMMENT TEXT ============ */
+    .comment-text {
+      color: #333;
+      font-size: 15px;
+      line-height: 1.6;
+      margin-bottom: 8px;
+    }
+
+    .comment-text.flagged-text {
+      text-decoration: line-through;
+      color: #999;
+    }
+
+    .flag-reason {
+      font-size: 13px;
+      color: #991b1b;
+      font-style: italic;
+      margin-top: 8px;
+      padding: 6px 0;
+    }
+
+    /* ============ STATS SECTION ============ */
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 12px;
+      padding: 0 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .stat-card {
+      background: white;
+      padding: 1rem;
+      border-radius: 8px;
+      text-align: center;
+      border: 1px solid #e0e0e0;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+
+    .stat-value {
+      font-size: 24px;
+      font-weight: 700;
+      color: #667eea;
+      margin-bottom: 4px;
+    }
+
+    .stat-label {
+      font-size: 12px;
+      color: #999;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* ============ RESPONSIVE ============ */
+    @media (max-width: 600px) {
+      .blog-container {
+        padding: 1rem 0.5rem;
+      }
+
+      .article-header,
+      .article-content,
+      .comment-form {
+        padding: 1rem;
+      }
+
+      .article-header h1 {
+        font-size: 24px;
+      }
+
+      .section-title {
+        padding: 0 0.5rem;
+      }
+
+      .comments-list {
+        padding: 0 0.5rem;
+      }
+
+      .comment-header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .comment-status {
+        align-self: flex-start;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="blog-container">
+    <!-- ARTICLE HEADER -->
+    <div class="article-header">
+      <h1>iPhone vs Samsung: Which Smartphone is Better in 2025?</h1>
+      <div class="article-meta">
+        <div class="author">
+          <div class="avatar">GS</div>
+          <span>GadgetShieldz</span>
+        </div>
+        <span>Jun 18, 2025</span>
+        <span>8 min read</span>
+      </div>
+    </div>
+
+    <!-- ARTICLE CONTENT -->
+    <div class="article-content">
+      <p>Choosing between an iPhone and a Samsung smartphone is a tough decision for buyers in 2025. Both brands dominate with cutting-edge tech, sleek designs, and loyal fans. This blog compares iPhone and Samsung across performance, camera, software, design, and pricing to help you decide.</p>
+      
+      <div style="text-align: center; margin: 2rem 0;">
+        <img src="iphone-vs-samsung.jpg" alt="iPhone vs Samsung comparison" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+      </div>
+      
+      <p><strong>1. Performance: Powerhouse Processors</strong></p>
+      <p>Both brands deliver top-tier performance, but their approaches differ.</p>
+      <p><strong>iPhone:</strong> Apple's A18 chip (iPhone 16 series) offers unmatched efficiency and power. It excels in single-core tasks, making iPhones ideal for gaming, video editing, and multitasking. Apple's hardware-software integration ensures smooth performance for years.</p>
+      <p><strong>Samsung:</strong> The Galaxy S25 series, powered by Snapdragon 8 Elite or Exynos 2500 (region-dependent), shines in multi-core tasks and GPU performance. One UI offers deep customization for power users.</p>
+      <p><strong>Verdict:</strong> iPhone slightly leads for seamless performance and longevity, but Samsung is great for multitasking and customization.</p>
+      
+      <p><strong>2. Camera: Capturing the Moment</strong></p>
+      <p>Cameras are a key factor, and both brands excel.</p>
+      <p><strong>iPhone:</strong> The iPhone 16 Pro's triple-lens system (48MP main, ultrawide, telephoto) delivers vibrant, true-to-life images with excellent low-light performance. Features like 4K ProRes video and Action Mode suit content creators.</p>
+      <p><strong>Samsung:</strong> The Galaxy S25 Ultra's 200MP main sensor captures incredible detail, with 10x optical zoom leading the pack. Nightography and AI-enhanced editing tools boost versatility.</p>
+      <p><strong>Verdict:</strong> Samsung wins for zoom and detail; iPhone excels in video and consistency. Pick based on your photography needs.</p>
+      
+      <p><strong>3. Software: iOS vs Android</strong></p>
+      <p><strong>iPhone (iOS):</strong> iOS 18 is polished, intuitive, and privacy-focused. Apple's ecosystem (iCloud, AirDrop, Apple Watch) ensures seamless device integration. iPhones get 5-7 years of updates.</p>
+      <p><strong>Samsung (Android):</strong> One UI 7 (Android 15) offers unmatched customization. Features like DeX mode and split-screen multitasking boost productivity. Samsung promises 7 years of updates for flagships.</p>
+      <p><strong>Verdict:</strong> iOS suits those who love simplicity and ecosystem integration; Android is for flexibility and innovation.</p>
+      
+      <p><strong>4. Design and Build: Style Meets Durability</strong></p>
+      <p><strong>iPhone:</strong> Apple's flat edges, Ceramic Shield glass, and titanium frames (Pro models) feel premium. iPhones are IP68 water-resistant but have limited color options.</p>
+      <p><strong>Samsung:</strong> Galaxy S25 series uses Gorilla Glass Armor 2 and aluminum/titanium frames. Foldables like Galaxy Z Fold 6 offer unique form factors. Vibrant colors and slimmer bezels add flair.</p>
+      <p><strong>Verdict:</strong> Samsung offers more variety, especially with foldables; iPhone appeals to minimalists.</p>
+      
+      <p><strong>5. Price and Value</strong></p>
+      <p><strong>iPhone (as of June 2025):</strong><br>
+      iPhone 16 (128GB): ₹73,500<br>
+      iPhone 16 (256GB): ₹89,900<br>
+      iPhone 16 Pro (256GB): ₹1,12,900<br>
+      Apple's pricing is premium, but iPhones retain high resale value. Limited storage options and no expandable memory are drawbacks.</p>
+      <p><strong>Samsung:</strong><br>
+      Galaxy S25 (256GB): ₹80,999<br>
+      Galaxy S25 Ultra (256GB): ₹1,02,800<br>
+      Samsung offers frequent discounts, trade-in deals, and microSD slots. Bundles like free earbuds add value.</p>
+      <p><strong>Verdict:</strong> Samsung provides better value with discounts and storage flexibility; iPhone justifies its price with longevity and resale value.</p>
+      
+      <p><strong>6. Battery Life and Charging</strong></p>
+      <p><strong>iPhone:</strong> iPhone 16 Pro (~3,500mAh) offers all-day battery life but slower charging (30W wired, 15W MagSafe). No charger in the box is a downside.</p>
+      <p><strong>Samsung:</strong> Galaxy S25 Ultra (~5,000mAh) lasts longer with 45W fast charging. Wireless and reverse wireless charging add versatility.</p>
+      <p><strong>Verdict:</strong> Samsung leads in battery capacity and charging speed.</p>
+      
+      <p><strong>Which Should You Choose?</strong></p>
+      <p>Choose iPhone if you want a seamless ecosystem, long software support, and top-tier video recording. Ideal for Apple fans and those prioritizing simplicity.</p>
+      <p>Choose Samsung if you value customization, superior cameras, and better value. Perfect for Android enthusiasts and feature explorers.</p>
+      
+      <p>Protect your investment with high-quality accessories. Whether you're Team iPhone or Team Samsung, safeguard your device today!</p>
+    </div>
+
+    <!-- STATS SECTION -->
+    <div class="stats">
+      <div class="stat-card">
+        <div class="stat-value" id="totalCount">127</div>
+        <div class="stat-label">Total Comments</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="flaggedCount">14</div>
+        <div class="stat-label">Flagged</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="accuracyCount">92%</div>
+        <div class="stat-label">Accuracy</div>
+      </div>
+    </div>
+
+    <!-- COMMENT FORM SECTION -->
+    <div class="section-title">Join the Discussion</div>
+
+    <div class="comment-form">
+      <h3>Add Your Comment</h3>
+      <div class="form-group">
+        <label for="nameInput">Your Name</label>
+        <input type="text" id="nameInput" placeholder="Enter your name">
+      </div>
+      <div class="form-group">
+        <label for="commentInput">Your Comment</label>
+        <textarea id="commentInput" placeholder="Share your thoughts on AI moderation..."></textarea>
+      </div>
+      <button class="submit-btn" onclick="submitComment()">Post Comment</button>
+      <div id="feedback" class="feedback"></div>
+    </div>
+
+    <!-- COMMENTS LIST -->
+    <div class="comments-list">
+      <div id="commentsList"></div>
+    </div>
+  </div>
+
+  <script>
+    // ============ TOXIC WORDS LIST ============
+    // Real systems use ML models, but this list covers common toxic words
+    const toxicWords = [
+      // Profanity
+      "fuck", "shit", "ass", "bitch", "damn", "hell", "crap", "piss",
+      "bastard", "cunt", "dick", "pussy", "twat", "wanker",
+      
+      // Insults
+      "idiot", "stupid", "dumb", "moron", "retard", "loser", "pathetic",
+      "worthless", "useless", "trash", "scum", "rat", "snake", "parasite",
+      
+      // Hate speech patterns
+      "hate", "despise", "disgusting", "filthy", "repulsive", "vile",
+      "hothead", "asshole", "jerk", "jackass", "prick",
+      
+      // Slang variations (common misspellings)
+      "shitty", "shitt", "fck", "f**k", "sh1t", "bullshit", "horseshit",
+      "motherfucker", "fucker", "bitches", "asses", "mofo",
+      
+      // Harassment/Insults
+      "kill yourself", "kys", "suicide", "worthless", "talentless",
+      "ugly", "fat", "skinny", "loser", "failure", "hopeless",
+      
+      // Slurs (common ones - add more based on your research)
+      "gay" // context-dependent, but often used as insult
+    ];
+    
+    // Note: This is still limited. Real systems use:
+    // - Machine Learning models trained on millions of examples
+    // - Word embeddings (understanding meaning, not just keywords)
+    // - Contextual analysis (understanding sentence context)
+    // - Semantic similarity (catching variations automatically)
+    // See explanation below in comments
+
+    // ============ SAMPLE COMMENTS ============
+    // This is pre-loaded to show how the system works
+    const sampleComments = [
+      {
+        name: "Priya M.",
+        avatar: "PM",
+        time: "3 hours ago",
+        text: "Great comparison! I was torn between iPhone 16 and Galaxy S25, this helped me understand the differences. Thanks for the honest review.",
+        isToxic: false
+      },
+      {
+        name: "Rahul Sharma",
+        avatar: "RS",
+        time: "2 hours ago",
+        text: "iPhone is overpriced garbage. Samsung S25 Ultra is clearly better in every way. This article is biased towards Apple.",
+        isToxic: false
+      },
+      {
+        name: "TechAnny",
+        avatar: "TA",
+        time: "1 hour ago",
+        text: "This article is shit and full of lies! iPhone users are idiots who get scammed by Apple. Samsung is the only choice for smart people.",
+        isToxic: true,
+        reason: "Profanity and personal attacks on users"
+      },
+      {
+        name: "Apple Lover",
+        avatar: "AL",
+        time: "45 min ago",
+        text: "The ecosystem integration you get with iPhone is unmatched. Worth every rupee. Samsung can't compete in smoothness and security.",
+        isToxic: false
+      },
+      {
+        name: "Angry Troll",
+        avatar: "AT",
+        time: "30 min ago",
+        text: "This review sucks and you're a stupid moron who doesn't know shit about phones. iPhone users are all idiots and assholes who deserve to burn.",
+        isToxic: true,
+        reason: "Multiple profanities, aggressive harassment"
+      },
+      {
+        name: "Budget Conscious",
+        avatar: "BC",
+        time: "20 min ago",
+        text: "Samsung offers much better value. With the discounts they're offering, the Galaxy S25 is a steal compared to iPhone pricing.",
+        isToxic: false
+      },
+      {
+        name: "Helpful User",
+        avatar: "HU",
+        time: "10 min ago",
+        text: "Good breakdown! One thing to note - the camera comparison could have included more about video stabilization. Still, helpful article overall!",
+        isToxic: false
+      }
+    ];
+
+    // ============ HELPER FUNCTIONS ============
+    function getInitials(name) {
+      return name
+        .split(' ')
+        .map(n => n[0])
+        .join('')
+        .toUpperCase()
+        .slice(0, 2);
+    }
+
+    function getAvatarGradient(initials) {
+      const gradients = [
+        'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+        'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+        'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
+        'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
+        'linear-gradient(135deg, #30cfd0 0%, #330867 100%)',
+      ];
+      const code = initials.charCodeAt(0) + initials.charCodeAt(1);
+      return gradients[code % gradients.length];
+    }
+
+    // ============ RENDER COMMENTS ============
+    function renderComments() {
+      const container = document.getElementById('commentsList');
+      
+      container.innerHTML = sampleComments.map((comment, idx) => {
+        const initials = getInitials(comment.name);
+        const gradient = getAvatarGradient(initials);
+        
+        return `
+          <div class="comment ${comment.isToxic ? 'flagged' : 'approved'}">
+            <div class="comment-header">
+              <div class="comment-author">
+                <div class="avatar" style="background: ${gradient};">${initials}</div>
+                <div class="author-info">
+                  <div class="author-name">${comment.name}</div>
+                  <div class="author-time">${comment.time}</div>
+                </div>
+              </div>
+              <span class="comment-status ${comment.isToxic ? 'status-flagged' : 'status-approved'}">
+                ${comment.isToxic ? '⚠️ Flagged' : '✓ Approved'}
+              </span>
+            </div>
+            <div class="comment-text ${comment.isToxic ? 'flagged-text' : ''}">
+              ${comment.text}
+            </div>
+            ${comment.isToxic ? `<div class="flag-reason">Reason: ${comment.reason}</div>` : ''}
+          </div>
+        `;
+      }).join('');
+    }
+
+    // ============ SUBMIT COMMENT ============
+    function submitComment() {
+      const name = document.getElementById('nameInput').value.trim();
+      const text = document.getElementById('commentInput').value.trim();
+      const feedback = document.getElementById('feedback');
+      
+      // Validation
+      if (!name || !text) {
+        feedback.textContent = '❌ Please fill in all fields.';
+        feedback.className = 'feedback show toxic';
+        return;
+      }
+
+      // Check for toxic language
+      const isToxic = toxicWords.some(word => text.toLowerCase().includes(word));
+      
+      // Create new comment
+      const newComment = {
+        name: name,
+        avatar: getInitials(name),
+        time: 'just now',
+        text: text,
+        isToxic: isToxic,
+        reason: isToxic ? 'Automatic detection: Toxic language detected' : null
+      };
+      
+      sampleComments.unshift(newComment);
+      
+      if (isToxic) {
+        feedback.innerHTML = '⚠️ Warning: Toxic language detected! Comment posted but FLAGGED for review.';
+        feedback.className = 'feedback show toxic';
+      } else {
+        feedback.innerHTML = '✓ Comment approved! Posted successfully.';
+        feedback.className = 'feedback show clean';
+      }
+      
+      // Clear form
+      document.getElementById('nameInput').value = '';
+      document.getElementById('commentInput').value = '';
+      
+      // Re-render and update stats
+      renderComments();
+      updateStats();
+      
+      // Hide feedback after 4 seconds
+      setTimeout(() => {
+        feedback.classList.remove('show');
+      }, 4000);
+    }
+
+    // ============ UPDATE STATS ============
+    function updateStats() {
+      const total = sampleComments.length;
+      const flagged = sampleComments.filter(c => c.isToxic).length;
+      const accuracy = Math.round(((total - flagged) / total) * 100);
+      
+      document.getElementById('totalCount').textContent = total;
+      document.getElementById('flaggedCount').textContent = flagged;
+      document.getElementById('accuracyCount').textContent = accuracy + '%';
+    }
+
+    // ============ INITIALIZE ============
+    renderComments();
+    updateStats();
+
+    // Allow Enter key to submit
+    document.getElementById('commentInput').addEventListener('keydown', function(e) {
+      if (e.key === 'Enter' && e.ctrlKey) {
+        submitComment();
+      }
+    });
+  </script>
+</body>
+</html>
