@@ -482,7 +482,10 @@
         <label for="commentInput">Your Comment</label>
         <textarea id="commentInput" placeholder="Share your thoughts on AI moderation..."></textarea>
       </div>
-      <button class="submit-btn" onclick="submitComment()">Post Comment</button>
+      <div style="display: flex; gap: 10px;">
+        <button class="submit-btn" onclick="submitComment()">Post Comment</button>
+        <button class="submit-btn" style="background: #ef4444;" onclick="resetComments()">Reset Comments</button>
+      </div>
       <div id="feedback" class="feedback"></div>
     </div>
 
@@ -606,6 +609,23 @@
       return gradients[code % gradients.length];
     }
 
+    // ============ LOAD/SAVE FROM LOCAL STORAGE ============
+    function loadCommentsFromStorage() {
+      const saved = localStorage.getItem('blogComments');
+      if (saved) {
+        try {
+          return JSON.parse(saved);
+        } catch (e) {
+          return sampleComments;
+        }
+      }
+      return sampleComments;
+    }
+
+    function saveCommentsToStorage() {
+      localStorage.setItem('blogComments', JSON.stringify(sampleComments));
+    }
+
     // ============ RENDER COMMENTS ============
     function renderComments() {
       const container = document.getElementById('commentsList');
@@ -664,6 +684,7 @@
       };
       
       sampleComments.unshift(newComment);
+      saveCommentsToStorage(); // 💾 SAVE TO LOCAL STORAGE
       
       if (isToxic) {
         feedback.innerHTML = '⚠️ Warning: Toxic language detected! Comment posted but FLAGGED for review.';
@@ -698,6 +719,69 @@
       document.getElementById('accuracyCount').textContent = accuracy + '%';
     }
 
+    // ============ RESET COMMENTS ============
+    function resetComments() {
+      if (confirm('Are you sure? This will delete all saved comments and reload sample comments.')) {
+        localStorage.removeItem('blogComments');
+        sampleComments = [...JSON.parse(JSON.stringify([
+          {
+            name: "Priya M.",
+            avatar: "PM",
+            time: "3 hours ago",
+            text: "Great comparison! I was torn between iPhone 16 and Galaxy S25, this helped me understand the differences. Thanks for the honest review.",
+            isToxic: false
+          },
+          {
+            name: "Rahul Sharma",
+            avatar: "RS",
+            time: "2 hours ago",
+            text: "iPhone is overpriced garbage. Samsung S25 Ultra is clearly better in every way. This article is biased towards Apple.",
+            isToxic: false
+          },
+          {
+            name: "TechAnny",
+            avatar: "TA",
+            time: "1 hour ago",
+            text: "This article is shit and full of lies! iPhone users are idiots who get scammed by Apple. Samsung is the only choice for smart people.",
+            isToxic: true,
+            reason: "Profanity and personal attacks on users"
+          },
+          {
+            name: "Apple Lover",
+            avatar: "AL",
+            time: "45 min ago",
+            text: "The ecosystem integration you get with iPhone is unmatched. Worth every rupee. Samsung can't compete in smoothness and security.",
+            isToxic: false
+          },
+          {
+            name: "Angry Troll",
+            avatar: "AT",
+            time: "30 min ago",
+            text: "This review sucks and you're a stupid moron who doesn't know shit about phones. iPhone users are all idiots and assholes who deserve to burn.",
+            isToxic: true,
+            reason: "Multiple profanities, aggressive harassment"
+          },
+          {
+            name: "Budget Conscious",
+            avatar: "BC",
+            time: "20 min ago",
+            text: "Samsung offers much better value. With the discounts they're offering, the Galaxy S25 is a steal compared to iPhone pricing.",
+            isToxic: false
+          },
+          {
+            name: "Helpful User",
+            avatar: "HU",
+            time: "10 min ago",
+            text: "Good breakdown! One thing to note - the camera comparison could have included more about video stabilization. Still, helpful article overall!",
+            isToxic: false
+          }
+        ]))];
+        renderComments();
+        updateStats();
+        alert('✅ Comments reset to default. All saved comments cleared.');
+      }
+    }
+
     // ============ INITIALIZE ============
     renderComments();
     updateStats();
@@ -707,6 +791,13 @@
       if (e.key === 'Enter' && e.ctrlKey) {
         submitComment();
       }
+    });
+
+    // ============ LOAD COMMENTS ON PAGE LOAD ============
+    window.addEventListener('load', function() {
+      sampleComments = loadCommentsFromStorage();
+      renderComments();
+      updateStats();
     });
   </script>
 </body>
